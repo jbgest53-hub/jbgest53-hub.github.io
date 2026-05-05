@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="theme-color" content="#2c2416"/>
+<title>FichesPro — Boulangerie</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:Georgia,serif;background:#f5f0e8;color:#2c2416;min-height:100vh}
+button,input,select,textarea{font-family:inherit;font-size:14px}
+input,select,textarea{outline:none;border:1px solid #d4c5a9;background:#fdf8f0;color:#2c2416;border-radius:10px;padding:8px 12px;width:100%}
+input:focus,select:focus,textarea:focus{border-color:#c8a96e}
+button{cursor:pointer;border:none;background:transparent}
+.card{background:#fff;border:1px solid #e8dcc8;border-radius:18px;padding:20px;margin-bottom:12px}
+.btn-gold{background:#c8a96e;color:#2c2416;border-radius:10px;padding:9px 18px;font-weight:700}
+.btn-dark{background:#2c2416;color:#c8a96e;border-radius:10px;padding:9px 18px;font-weight:700}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9c8469}
+.mono{font-family:monospace}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#2c2416;color:#c8a96e;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+td{padding:8px 10px;border-bottom:1px solid #e8dcc8}
+tr:nth-child(even) td{background:#faf6ef}
+.input-num{width:72px;text-align:right;padding:5px 8px;border-radius:8px;font-family:monospace}
+.pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid #e8dcc8;background:#f5f0e8;color:#6b5a3e;margin:2px}
+select.inline{border:none;background:transparent;width:auto;padding:0;font-size:12px;color:#9c8469;cursor:pointer}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:center;justify-content:center;padding:12px}
+.modal{background:#fff;border-radius:20px;width:100%;max-width:500px;overflow:hidden}
+.demo-banner{background:#e67e22;color:#fff;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:#c8a96e55;border-radius:3px}
+.overflow-x{overflow-x:auto}
+@media(max-width:768px){.hide-mobile{display:none}.grid-2{grid-template-columns:1fr!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ═══════════════════════════════════════════════════════
+// DONNÉES
+// ═══════════════════════════════════════════════════════
+const ALLERGENES=[
+  {key:"gluten",label:"Gluten",e:"🌾"},{key:"lactose",label:"Lactose",e:"🥛"},
+  {key:"oeufs",label:"Œufs",e:"🥚"},{key:"arachides",label:"Arachides",e:"🥜"},
+  {key:"soja",label:"Soja",e:"🫘"},{key:"fruits_coque",label:"Fruits à coque",e:"🌰"},
+  {key:"poisson",label:"Poisson",e:"🐟"},{key:"crustaces",label:"Crustacés",e:"🦐"},
+  {key:"sulfites",label:"Sulfites",e:"🍷"},{key:"sesame",label:"Sésame",e:"🌿"},
+  {key:"moutarde",label:"Moutarde",e:"🟡"},{key:"celeri",label:"Céleri",e:"🥬"},
+  {key:"lupin",label:"Lupin",e:"🌸"},{key:"mollusques",label:"Mollusques",e:"🐚"}
+];
+const CATEGORIES=[
+  {key:"pains",label:"Pains",e:"🍞",c:"#c8a96e"},
+  {key:"viennoiseries",label:"Viennoiseries",e:"🥐",c:"#e67e22"},
+  {key:"patisseries",label:"Pâtisseries",e:"🎂",c:"#e91e8c"},
+  {key:"traiteur",label:"Traiteur",e:"🥗",c:"#27ae60"},
+  {key:"autre",label:"Autre",e:"📦",c:"#7f8c8d"}
+];
+const DEF_FOURNS=[{id:10,nom:"Metro"},{id:11,nom:"Promocash"},{id:12,nom:"Brake France"}];
+const DEF_INGS=[
+  {id:1,nom:"Farine T65",unite:"kg",allergenes:["gluten"],prix:{10:[{v:0.85,d:"2025-01-10"}],11:[{v:0.79,d:"2025-03-01"}],12:[{v:0.92,d:"2025-02-15"}]}},
+  {id:2,nom:"Sel fin",unite:"kg",allergenes:[],prix:{10:[{v:0.30,d:"2025-01-10"}],11:[{v:0.28,d:"2025-03-01"}],12:[{v:0.33,d:"2025-02-15"}]}},
+  {id:3,nom:"Levure fraîche",unite:"kg",allergenes:[],prix:{10:[{v:2.20,d:"2025-01-10"}],11:[{v:2.10,d:"2025-03-01"}],12:[{v:2.35,d:"2025-02-15"}]}},
+  {id:4,nom:"Eau",unite:"L",allergenes:[],prix:{10:[{v:0.003,d:"2025-01-10"}],11:[{v:0.003,d:"2025-03-01"}],12:[{v:0.003,d:"2025-02-15"}]}},
+  {id:5,nom:"Beurre AOP",unite:"kg",allergenes:["lactose"],prix:{10:[{v:8.50,d:"2025-01-10"}],11:[{v:8.20,d:"2025-03-01"}],12:[{v:8.75,d:"2025-02-15"}]}},
+  {id:6,nom:"Sucre",unite:"kg",allergenes:[],prix:{10:[{v:1.20,d:"2025-02-01"}],11:[{v:1.10,d:"2025-03-01"}],12:[{v:1.25,d:"2025-01-15"}]}},
+  {id:7,nom:"Œufs frais",unite:"piece",allergenes:["oeufs"],prix:{10:[{v:0.28,d:"2025-02-01"}],11:[{v:0.25,d:"2025-03-01"}],12:[{v:0.30,d:"2025-02-15"}]}},
+  {id:8,nom:"Lait entier",unite:"L",allergenes:["lactose"],prix:{10:[{v:1.05,d:"2025-02-01"}],11:[{v:0.98,d:"2025-03-01"}],12:[{v:1.10,d:"2025-01-15"}]}},
+  {id:9,nom:"Crème fraîche",unite:"L",allergenes:["lactose"],prix:{10:[{v:3.20,d:"2025-02-01"}],11:[{v:3.10,d:"2025-03-01"}],12:[{v:3.40,d:"2025-02-15"}]}},
+  {id:10,nom:"Chocolat noir 64%",unite:"kg",allergenes:["gluten","lactose"],prix:{10:[{v:12.50,d:"2025-02-01"}],11:[{v:11.80,d:"2025-03-01"}],12:[{v:13.00,d:"2025-02-15"}]}}
+];
+const DEMO_RECS=[
+  {id:101,nom:"Pain de Campagne",cat:"pains",freq:12,notes:"Cuisson 250°C 35min. Scarifier avant enfournement.",photo:null,poids:"400",modeCalc:"poids",pieces:1,lignes:[{id:1,q:1000},{id:4,q:650},{id:2,q:20},{id:3,q:5}]},
+  {id:102,nom:"Croissant Beurre",cat:"viennoiseries",freq:8,notes:"Tourage 3 fois. Repos 1h au frigo entre chaque tour.",photo:null,poids:"85",modeCalc:"poids",pieces:1,lignes:[{id:1,q:500},{id:5,q:250},{id:8,q:150},{id:6,q:60},{id:2,q:10},{id:3,q:15},{id:7,q:2}]},
+  {id:103,nom:"Tarte Citron",cat:"patisseries",freq:5,notes:"Meringue italienne à 118°C.",photo:null,poids:"120",modeCalc:"pieces",pieces:8,lignes:[{id:1,q:250},{id:5,q:125},{id:6,q:100},{id:7,q:3}]},
+  {id:104,nom:"Fondant Chocolat",cat:"patisseries",freq:3,notes:"Cœur coulant 10min à 200°C.",photo:null,poids:"90",modeCalc:"pieces",pieces:6,lignes:[{id:10,q:200},{id:5,q:150},{id:6,q:120},{id:7,q:4},{id:1,q:50}]},
+  {id:105,nom:"Baguette Tradition",cat:"pains",freq:20,notes:"Fermentation 18h à 4°C. Cuisson 240°C avec buée.",photo:null,poids:"250",modeCalc:"poids",pieces:1,lignes:[{id:1,q:1000},{id:4,q:680},{id:2,q:18},{id:3,q:3}]}
+];
+
+// ═══════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════
+const fe=(n,d=2)=>Number(n).toFixed(d)+' €';
+const f3=n=>Number(n).toFixed(3);
+const today=()=>new Date().toISOString().split('T')[0];
+const daysSince=d=>Math.floor((Date.now()-new Date(d).getTime())/86400000);
+function dprix(ing,fid){const h=ing.prix?.[fid];return h&&h.length?h[h.length-1]:null;}
+function bestPrice(ing,fid=null){
+  if(!ing.prix||!Object.keys(ing.prix).length)return 0;
+  if(fid!=null){const dp=dprix(ing,fid);return dp?dp.v:0;}
+  const vals=Object.values(ing.prix).map(h=>h&&h.length?h[h.length-1].v:0).filter(v=>v>0);
+  return vals.length?Math.min(...vals):0;
+}
+function cheapestFid(ing){
+  if(!ing.prix)return null;
+  let min=Infinity,fid=null;
+  Object.entries(ing.prix).forEach(([k,h])=>{if(!h||!h.length)return;const v=h[h.length-1].v;if(v>0&&v<min){min=v;fid=parseInt(k);}});
+  return fid;
+}
+function coutRec(rec,ings,fm={}){
+  return rec.lignes.reduce((s,l)=>{
+    const ing=ings.find(i=>i.id===l.id);if(!ing)return s;
+    const p=bestPrice(ing,fm[l.id]??null);
+    return s+(l.q/(ing.unite==='piece'?1:1000))*p;
+  },0);
+}
+function cppRec(rec,ings,fm={}){
+  const ct=coutRec(rec,ings,fm);
+  const pp=parseFloat(rec.poids)||0;
+  const ptp=rec.lignes.reduce((s,l)=>s+(parseFloat(l.q)||0),0);
+  if(rec.modeCalc==='poids'&&pp>0&&ptp>0)return ct*(pp/ptp);
+  return rec.pieces>0?ct/rec.pieces:0;
+}
+function algRec(rec,ings){
+  const s=new Set();
+  rec.lignes.forEach(l=>{const ing=ings.find(i=>i.id===l.id);(ing?.allergenes||[]).forEach(a=>s.add(a));});
+  return [...s];
+}
+function catOf(rec){return CATEGORIES.find(c=>c.key===rec.cat)||CATEGORIES[0];}
+
+// Storage
+const SK='fichespro-v9';
+function load(){try{const r=localStorage.getItem(SK);return r?JSON.parse(r):null;}catch{return null;}}
+function save(d){try{localStorage.setItem(SK,JSON.stringify(d));}catch{}}
+
+// ═══════════════════════════════════════════════════════
+// STATE GLOBAL
+// ═══════════════════════════════════════════════════════
+const saved=load();
+let STATE={
+  tab:'dashboard',
+  ings:saved?.ings||JSON.parse(JSON.stringify(DEF_INGS)),
+  fourns:saved?.fourns||JSON.parse(JSON.stringify(DEF_FOURNS)),
+  recs:saved?.recs||[],
+  activeRecId:null,
+  demoMode:false,
+  modal:null // 'pdf-picker'
+};
+
+function setState(patch){
+  Object.assign(STATE,patch);
+  save({ings:STATE.ings,fourns:STATE.fourns,recs:STATE.recs});
+  render();
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER ENGINE (vanilla DOM)
+// ═══════════════════════════════════════════════════════
+function el(tag,attrs={},children=[]){
+  const e=document.createElement(tag);
+  Object.entries(attrs).forEach(([k,v])=>{
+    if(k==='style'&&typeof v==='object')Object.assign(e.style,v);
+    else if(k.startsWith('on'))e.addEventListener(k.slice(2).toLowerCase(),v);
+    else if(k==='html')e.innerHTML=v;
+    else if(k==='class')e.className=v;
+    else e.setAttribute(k,v);
+  });
+  children.flat(Infinity).forEach(c=>{
+    if(c==null||c===false)return;
+    e.appendChild(typeof c==='string'?document.createTextNode(c):c);
+  });
+  return e;
+}
+function div(attrs,children){return el('div',attrs,children);}
+function span(attrs,children){return el('span',attrs,children);}
+function btn(attrs,children){return el('button',attrs,children);}
+function inp(attrs){return el('input',attrs);}
+function sel(attrs,options){
+  const s=el('select',attrs);
+  options.forEach(o=>{
+    const opt=el('option',{value:o.v},o.v!==undefined?[o.l]:o);
+    s.appendChild(opt);
+    if(o.sel)opt.selected=true;
+  });
+  return s;
+}
+function h(n,attrs,children){return el('h'+n,attrs,children);}
+function p(attrs,children){return el('p',attrs,children);}
+
+function render(){
+  const app=document.getElementById('app');
+  app.innerHTML='';
+  app.appendChild(buildApp());
+}
+
+// ═══════════════════════════════════════════════════════
+// BUILD APP
+// ═══════════════════════════════════════════════════════
+function buildApp(){
+  const root=div({});
+
+  // Header
+  root.appendChild(buildHeader());
+
+  // Demo banner
+  if(STATE.demoMode){
+    root.appendChild(div({class:'demo-banner'},[
+      span({},'🧪 Mode démo — données fictives'),
+      btn({style:{background:'rgba(255,255,255,.2)',color:'#fff',borderRadius:'8px',padding:'4px 12px',fontSize:'12px'},onClick:()=>setState({demoMode:false,recs:[],activeRecId:null})},'✕ Effacer démo')
+    ]));
+  }
+
+  // Modal
+  if(STATE.modal==='pdf-picker') root.appendChild(buildPDFPicker());
+
+  // Main
+  const main=div({style:{maxWidth:'960px',margin:'0 auto',padding:'16px'}});
+  if(STATE.tab==='dashboard') main.appendChild(buildDashboard());
+  else if(STATE.tab==='ingredients') main.appendChild(buildIngredients());
+  else if(STATE.tab==='recettes') main.appendChild(buildRecettes());
+  else if(STATE.tab==='prix') main.appendChild(buildPrix());
+  root.appendChild(main);
+
+  return root;
+}
+
+// ── HEADER ──────────────────────────────────────────────────────
+function buildHeader(){
+  const tabs=[
+    {id:'dashboard',label:'Dashboard',icon:'📊'},
+    {id:'ingredients',label:'Ingrédients',icon:'🛒'},
+    {id:'recettes',label:'Recettes',icon:'👨‍🍳'},
+    {id:'prix',label:'Prix',icon:'💰'},
+  ];
+  return div({style:{background:'#2c2416',color:'#f5f0e8',padding:'10px 16px',position:'sticky',top:'0',zIndex:'50',boxShadow:'0 2px 8px rgba(0,0,0,.3)'}},[
+    div({style:{maxWidth:'960px',margin:'0 auto',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'8px'}},[
+      div({style:{display:'flex',alignItems:'center',gap:'8px'}},[
+        div({style:{width:'34px',height:'34px',borderRadius:'50%',background:'#c8a96e',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px',flexShrink:'0'}},'🥖'),
+        div({},[
+          div({style:{fontSize:'15px',fontWeight:'700',lineHeight:'1.1'}},'FichesPro'),
+          div({style:{fontSize:'10px',opacity:'.6'}},'Boulangerie')
+        ])
+      ]),
+      div({style:{display:'flex',alignItems:'center',gap:'6px',flexWrap:'wrap',justifyContent:'flex-end'}},[
+        // Export btn
+        btn({style:{background:'rgba(255,255,255,.15)',color:'#f5f0e8',borderRadius:'8px',padding:'6px 10px',fontSize:'12px',display:'flex',alignItems:'center',gap:'4px'},
+          onClick:()=>{
+            const d=JSON.stringify({ings:STATE.ings,fourns:STATE.fourns,recs:STATE.recs},null,2);
+            const b=new Blob([d],{type:'application/json'});
+            const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='fichespro.json';a.click();
+          }},'⬇ Export JSON'),
+        // Import
+        el('label',{style:{background:'rgba(255,255,255,.15)',color:'#f5f0e8',borderRadius:'8px',padding:'6px 10px',fontSize:'12px',cursor:'pointer'}},[
+          '⬆ Import',
+          el('input',{type:'file',accept:'.json',style:{display:'none'},onChange(e){
+            const f=e.target.files[0];if(!f)return;
+            const r=new FileReader();
+            r.onload=ev=>{try{const d=JSON.parse(ev.target.result);setState({ings:d.ings||STATE.ings,fourns:d.fourns||STATE.fourns,recs:d.recs||STATE.recs});}catch{alert('Fichier invalide');}};
+            r.readAsText(f);
+          }})
+        ]),
+        // Demo
+        !STATE.demoMode&&btn({style:{background:'rgba(230,126,34,.3)',color:'#f0a060',borderRadius:'8px',padding:'6px 10px',fontSize:'12px',border:'1px solid rgba(230,126,34,.5)'},
+          onClick:()=>setState({demoMode:true,ings:JSON.parse(JSON.stringify(DEF_INGS)),fourns:JSON.parse(JSON.stringify(DEF_FOURNS)),recs:JSON.parse(JSON.stringify(DEMO_RECS)),tab:'recettes'})},'🧪 Démo'),
+        // Nav tabs
+        ...tabs.map(t=>btn({
+          style:{background:STATE.tab===t.id?'#c8a96e':'transparent',color:STATE.tab===t.id?'#2c2416':'#f5f0e8',borderRadius:'8px',padding:'6px 10px',fontSize:'12px',fontWeight:STATE.tab===t.id?'700':'400',display:'flex',flexDirection:'column',alignItems:'center',gap:'2px'},
+          onClick:()=>setState({tab:t.id})},[t.icon,div({style:{fontSize:'9px'}},[t.label])])
+        )
+      ])
+    ])
+  ]);
+}
+
+// ── DASHBOARD ───────────────────────────────────────────────────
+function buildDashboard(){
+  const {ings,fourns,recs}=STATE;
+  const topRecs=[...recs].sort((a,b)=>(b.freq||0)-(a.freq||0)).slice(0,5);
+  const mCout=recs.length?recs.reduce((s,r)=>s+cppRec(r,ings),0)/recs.length:0;
+  const alertes=[];
+  ings.forEach(ing=>Object.entries(ing.prix||{}).forEach(([fid,hist])=>{
+    if(!hist||!hist.length)return;
+    const dp=hist[hist.length-1];const j=daysSince(dp.d);
+    if(j>30)alertes.push({ing,f:fourns.find(f=>f.id===parseInt(fid)),j,d:dp.d});
+  }));
+  const algMap={};
+  recs.forEach(r=>algRec(r,ings).forEach(a=>{algMap[a]=(algMap[a]||0)+1;}));
+
+  return div({},[
+    sectionTitle('📊','Tableau de bord','Vue synthétique de votre activité'),
+    div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'16px'}},[
+      statCard('Recettes',recs.length,'👨‍🍳'),
+      statCard('Ingrédients',ings.length,'🛒'),
+      statCard('Fournisseurs',fourns.length,'🚛'),
+      statCard('Coût moy./pièce',fe(mCout),'💰',true),
+    ]),
+    // Top recettes
+    div({class:'card'},[
+      div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}},[
+        div({class:'label'},'🔥 Recettes les + utilisées'),
+        btn({style:{color:'#c8a96e',fontSize:'12px',textDecoration:'underline'},onClick:()=>setState({tab:'recettes'})},'Voir tout')
+      ]),
+      topRecs.length===0?p({style:{color:'#9c8469',fontSize:'13px',textAlign:'center',padding:'12px'}},'Aucune recette encore'):
+      div({},[...topRecs.map((r,i)=>{
+        const cat=catOf(r);
+        return div({style:{display:'flex',alignItems:'center',gap:'10px',padding:'8px 0',borderBottom:i<topRecs.length-1?'1px solid #e8dcc8':'none',cursor:'pointer'},onClick:()=>{STATE.activeRecId=r.id;r.freq=(r.freq||0)+1;setState({tab:'recettes'});}},[
+          div({style:{width:'32px',height:'32px',borderRadius:'8px',background:'#f5f0e8',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px',flexShrink:'0'}},[r.photo?el('img',{src:r.photo,style:{width:'32px',height:'32px',borderRadius:'8px',objectFit:'cover'}}):cat.e]),
+          span({style:{width:'20px',height:'20px',borderRadius:'50%',background:'#c8a96e22',color:'#c8a96e',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:'700',flexShrink:'0'}},[(i+1)]),
+          div({style:{flex:'1',minWidth:'0'}},[
+            div({style:{fontWeight:'600',fontSize:'13px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},[r.nom]),
+            div({style:{fontSize:'11px',color:'#9c8469'}},[fe(cppRec(r,ings))+'/pièce'])
+          ]),
+          span({class:'tag',style:{background:'#fdf3e0',color:'#c8a96e'}},['🔥',r.freq||0])
+        ]);
+      })])
+    ]),
+    // Alertes prix
+    div({class:'card',style:{marginTop:'12px'}},[
+      div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}},[
+        div({class:'label',style:{color:alertes.length>0?'#e67e22':'#9c8469'}},'⚠️ Prix non mis à jour (+30j)'),
+        alertes.length>0&&span({class:'tag',style:{background:'#fde8c0',color:'#e67e22'}},[alertes.length])
+      ]),
+      alertes.length===0?div({style:{background:'#e8f5e2',borderRadius:'10px',padding:'10px 14px',color:'#3a7d44',fontSize:'13px',display:'flex',alignItems:'center',gap:'8px'}},['✅ Tous les prix sont récents']):
+      div({},[...alertes.slice(0,5).map((a,i)=>div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:i<Math.min(alertes.length,5)-1?'1px solid #e8dcc8':'none'}},[
+        div({},[div({style:{fontWeight:'600',fontSize:'13px'}},[a.ing.nom]),div({style:{fontSize:'11px',color:'#9c8469'}},[a.f?.nom+' · '+a.d])]),
+        span({class:'tag',style:{background:'#fde8c0',color:'#e67e22'}},[a.j+'j'])
+      ]))])
+    ]),
+    // Allergènes
+    Object.keys(algMap).length>0&&div({class:'card',style:{marginTop:'12px'}},[
+      div({class:'label',style:{marginBottom:'10px'}},'🛡️ Allergènes dans vos recettes'),
+      div({style:{display:'flex',flexWrap:'wrap',gap:'6px'}},[
+        ...Object.entries(algMap).sort((a,b)=>b[1]-a[1]).map(([key,count])=>{
+          const a=ALLERGENES.find(x=>x.key===key);
+          return a?span({class:'tag',style:{background:'#fde8c0',border:'1px solid #c8a96e',color:'#6b5a3e'}},[a.e+' '+a.label+' ×'+count]):null;
+        }).filter(Boolean)
+      ])
+    ])
+  ]);
+}
+
+// ── INGRÉDIENTS ──────────────────────────────────────────────────
+function buildIngredients(){
+  const {ings,fourns,recs}=STATE;
+  const freqMap={};
+  recs.forEach(r=>r.lignes.forEach(l=>{freqMap[l.id]=(freqMap[l.id]||0)+1;}));
+
+  const search=(document.getElementById('ing-search')?.value||'').toLowerCase();
+  const sortMode=document.getElementById('ing-sort')?.value||'alpha';
+  let sorted=[...ings].filter(i=>i.nom.toLowerCase().includes(search));
+  if(sortMode==='alpha')sorted.sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));
+  else sorted.sort((a,b)=>(freqMap[b.id]||0)-(freqMap[a.id]||0));
+
+  const activeFid=STATE.activeIngTab;
+  const colF=activeFid&&activeFid!=='tous'?fourns.filter(f=>f.id===activeFid):fourns;
+
+  return div({},[
+    sectionTitle('🛒','Matières premières','Ingrédients, fournisseurs & allergènes'),
+
+    // Recherche
+    div({style:{position:'relative',marginBottom:'12px'}},[
+      inp({id:'ing-search',placeholder:'🔍 Rechercher un ingrédient…',style:{paddingLeft:'12px'},
+        onInput:()=>render()}),
+    ]),
+
+    // Onglets fournisseurs
+    div({style:{display:'flex',gap:'6px',marginBottom:'12px',flexWrap:'wrap'}},[
+      ...[{id:'tous',label:'Tous'},...fourns.map(f=>({id:f.id,label:f.nom}))].map(t=>
+        btn({style:{background:(activeFid||'tous')===t.id?'#2c2416':'#fff',color:(activeFid||'tous')===t.id?'#c8a96e':'#6b5a3e',border:'1px solid #d4c5a9',borderRadius:'8px',padding:'6px 12px',fontSize:'12px',fontWeight:'600'},
+          onClick:()=>{STATE.activeIngTab=t.id;render();}},[t.label])
+      ),
+      btn({style:{background:'#fdf3e0',color:'#c8a96e',border:'1px dashed #c8a96e',borderRadius:'8px',padding:'6px 12px',fontSize:'12px'},
+        onClick:()=>{STATE.showFournPanel=!STATE.showFournPanel;render();}},[STATE.showFournPanel?'✕ Fermer':'+ Fournisseur'])
+    ]),
+
+    // Panel fournisseurs
+    STATE.showFournPanel&&div({class:'card',style:{marginBottom:'12px'}},[
+      div({class:'label',style:{marginBottom:'10px'}},'Gérer les fournisseurs'),
+      div({style:{display:'flex',gap:'8px',marginBottom:'12px'}},[
+        inp({id:'fourn-input',placeholder:'Nom du fournisseur…',onKeydown:e=>{if(e.key==='Enter'){const v=document.getElementById('fourn-input').value.trim();if(v){STATE.fourns=[...STATE.fourns,{id:Date.now(),nom:v}];setState({});}}}},),
+        btn({class:'btn-gold',style:{flexShrink:'0',padding:'8px 14px'},onClick:()=>{const v=document.getElementById('fourn-input').value.trim();if(v){setState({fourns:[...STATE.fourns,{id:Date.now(),nom:v}]},);render();}}},'+ Ajouter')
+      ]),
+      div({},[ ...fourns.map(f=>div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',borderRadius:'10px',background:'#faf6ef',border:'1px solid #e8dcc8',marginBottom:'6px'}},[
+        span({style:{fontSize:'13px',fontWeight:'600'}},[`🚛 ${f.nom}`]),
+        btn({style:{background:'#fde8e8',color:'#c0392b',border:'1px solid #f5c6c6',borderRadius:'6px',padding:'4px 10px',fontSize:'12px'},
+          onClick:()=>{STATE.fourns=STATE.fourns.filter(x=>x.id!==f.id);STATE.ings=STATE.ings.map(i=>{const prix={...i.prix};delete prix[f.id];return{...i,prix};});if(STATE.activeIngTab===f.id)STATE.activeIngTab='tous';render();}},'− Supprimer')
+      ]))])
+    ]),
+
+    // Formulaire ajout
+    div({class:'card',style:{marginBottom:'12px'}},[
+      div({class:'label',style:{marginBottom:'10px'}},'Ajouter un ingrédient'),
+      div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'8px'}},[
+        inp({id:'ing-nom',placeholder:'Nom (ex: Farine T65)'}),
+        sel({id:'ing-unite',style:{}},[
+          {v:'kg',l:'kg'},{v:'L',l:'L'},{v:'piece',l:'pièce'}
+        ].map(o=>({...o,sel:o.v==='kg'})))
+      ]),
+      div({class:'label',style:{marginBottom:'6px'}},'Allergènes'),
+      div({id:'alg-form',style:{display:'flex',flexWrap:'wrap',gap:'4px',marginBottom:'10px'}},[
+        ...ALLERGENES.map(a=>btn({
+          'data-key':a.key,
+          style:{padding:'4px 8px',borderRadius:'20px',border:'1px solid #e8dcc8',background:'#f5f0e8',color:'#9c8469',fontSize:'12px',cursor:'pointer'},
+          onClick(e){const b=e.currentTarget;const active=b.dataset.active==='1';b.dataset.active=active?'':'1';b.style.background=active?'#f5f0e8':'#fde8c0';b.style.borderColor=active?'#e8dcc8':'#c8a96e';b.style.color=active?'#9c8469':'#b8892e';}},[a.e+' '+a.label])
+        )
+      ]),
+      fourns.length>0&&div({},[
+        div({class:'label',style:{marginBottom:'6px'}},'Prix par fournisseur'),
+        div({style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:'8px',marginBottom:'10px'}},[
+          ...fourns.map(f=>div({},[
+            p({style:{fontSize:'11px',color:'#6b5a3e',marginBottom:'3px'}},[f.nom]),
+            inp({id:`prix-${f.id}`,type:'number',step:'0.001',placeholder:'0.00'})
+          ]))
+        ])
+      ]),
+      btn({class:'btn-gold',style:{display:'flex',alignItems:'center',gap:'6px'},onClick:()=>{
+        const nom=document.getElementById('ing-nom').value.trim();if(!nom)return;
+        const unite=document.getElementById('ing-unite').value;
+        const algBtns=[...document.querySelectorAll('#alg-form button[data-active="1"]')];
+        const allergenes=algBtns.map(b=>b.dataset.key);
+        const prix={};
+        fourns.forEach(f=>{const v=parseFloat(document.getElementById(`prix-${f.id}`)?.value);if(v)prix[f.id]=[{v,d:today()}];});
+        STATE.ings=[...STATE.ings,{id:Date.now(),nom,unite,allergenes,prix}];
+        render();
+      }},['+ Ajouter'])
+    ]),
+
+    // Tri
+    div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}},[
+      span({style:{fontSize:'12px',color:'#9c8469'}},[`${sorted.length} ingrédient${sorted.length!==1?'s':''}`]),
+      div({style:{display:'flex',borderRadius:'8px',overflow:'hidden',border:'1px solid #d4c5a9'}},[
+        btn({style:{padding:'5px 10px',background:sortMode==='alpha'?'#2c2416':'#fdf8f0',color:sortMode==='alpha'?'#c8a96e':'#9c8469',fontSize:'12px'},onClick:()=>{document.getElementById('ing-sort').value='alpha';render();}},'A→Z'),
+        btn({style:{padding:'5px 10px',background:sortMode==='freq'?'#2c2416':'#fdf8f0',color:sortMode==='freq'?'#c8a96e':'#9c8469',fontSize:'12px',borderLeft:'1px solid #d4c5a9'},onClick:()=>{document.getElementById('ing-sort').value='freq';render();}},'Fréq.'),
+        inp({id:'ing-sort',type:'hidden',value:sortMode})
+      ])
+    ]),
+
+    // Table
+    div({class:'overflow-x'},[
+      el('table',{},[
+        el('thead',{},[el('tr',{},[
+          el('th',{},'Ingrédient'),el('th',{},'Unité'),el('th',{},'Allerg.'),
+          ...colF.map(f=>el('th',{},['🚛 '+f.nom])),
+          activeFid==='tous'&&el('th',{},'Meilleur'),
+          el('th',{},'')
+        ].filter(Boolean))]),
+        el('tbody',{},[...sorted.map((ing,i)=>{
+          const mcFid=cheapestFid(ing);const mcF=fourns.find(f=>f.id===mcFid);const mcP=mcFid?dprix(ing,mcFid)?.v:null;
+          const freq=freqMap[ing.id]||0;
+          return el('tr',{},[
+            el('td',{},[ing.nom,freq>0?span({style:{marginLeft:'4px',background:'#fdf3e0',color:'#c8a96e',borderRadius:'10px',padding:'1px 6px',fontSize:'10px'}},['🔥'+freq]):''].filter(Boolean)),
+            el('td',{},ing.unite),
+            el('td',{},[(ing.allergenes||[]).map(k=>ALLERGENES.find(x=>x.key===k)?.e||'').join('') || '—']),
+            ...colF.map(f=>{
+              const dp=dprix(ing,f.id);const isBest=mcFid===f.id&&colF.length>1;const stale=dp&&daysSince(dp.d)>30;
+              return el('td',{},[dp?span({style:{background:isBest?'#e8f5e2':'transparent',color:isBest?'#3a7d44':'#2c2416',border:isBest?'1px solid #a8d5a2':'none',borderRadius:'6px',padding:'2px 6px',fontFamily:'monospace',fontSize:'12px'}},[(isBest?'⭐':'')+fe(dp.v)]):'—', stale?'⚠️':''].filter(Boolean));
+            }),
+            (!activeFid||activeFid==='tous')&&el('td',{},[mcF&&mcP!=null?span({style:{background:'#e8f5e2',color:'#3a7d44',borderRadius:'6px',padding:'2px 6px',fontSize:'11px',fontWeight:'600'}},['⭐'+mcF.nom+' '+fe(mcP)]):'—']),
+            el('td',{},[
+              btn({style:{background:'#9c846922',color:'#9c8469',borderRadius:'6px',padding:'4px 8px',fontSize:'12px',marginRight:'4px'},onClick:()=>{
+                STATE.editIngId=ing.id;STATE.editIngData={...ing,prix:JSON.parse(JSON.stringify(ing.prix||{})),allergenes:[...(ing.allergenes||[])]};
+                alert('Edition en développement — utilisez Supprimer + Ajouter pour modifier pour l\'instant');
+              }},'✏️'),
+              btn({style:{background:'#c0392b22',color:'#c0392b',borderRadius:'6px',padding:'4px 8px',fontSize:'12px'},onClick:()=>{if(confirm('Supprimer '+ing.nom+' ?')){STATE.ings=STATE.ings.filter(i=>i.id!==ing.id);render();}}},'🗑️')
+            ])
+          ].filter(Boolean));
+        })])
+      ])
+    ])
+  ]);
+}
+
+// ── RECETTES ─────────────────────────────────────────────────────
+function buildRecettes(){
+  const {ings,fourns,recs}=STATE;
+  const search=(document.getElementById('rec-search')?.value||'').toLowerCase();
+  const sortMode=document.getElementById('rec-sort')?.value||'alpha';
+  const filterCat=STATE.filterCat||'toutes';
+
+  let sorted=[...recs].filter(r=>r.nom.toLowerCase().includes(search));
+  if(filterCat!=='toutes')sorted=sorted.filter(r=>r.cat===filterCat);
+  if(sortMode==='alpha')sorted.sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));
+  else sorted.sort((a,b)=>(b.freq||0)-(a.freq||0));
+
+  const rec=STATE.activeRecId?recs.find(r=>r.id===STATE.activeRecId):null;
+
+  return div({style:{display:'grid',gridTemplateColumns:'300px 1fr',gap:'16px'}},[ // desktop
+    // ─ Colonne liste
+    div({},[
+      sectionTitle('👨‍🍳','Fiches techniques','Vos recettes'),
+
+      // Recherche
+      div({style:{position:'relative',marginBottom:'10px'}},[
+        inp({id:'rec-search',placeholder:'🔍 Rechercher…',onInput:()=>render()})
+      ]),
+
+      // Nouvelle recette
+      div({class:'card',style:{marginBottom:'10px'}},[
+        div({style:{display:'flex',gap:'6px',marginBottom:'6px'}},[
+          inp({id:'rec-nom',placeholder:'Nom de la recette…',onKeydown:e=>{if(e.key==='Enter')createRecette();}}),
+          btn({class:'btn-gold',style:{flexShrink:'0',padding:'8px 12px'},onClick:createRecette},'＋')
+        ]),
+        sel({id:'rec-cat'},[...CATEGORIES.map(c=>({v:c.key,l:c.e+' '+c.label,sel:c.key==='pains'}))])
+      ]),
+
+      // Filtres catégories
+      div({style:{display:'flex',gap:'4px',flexWrap:'wrap',marginBottom:'10px'}},[
+        btn({style:{padding:'4px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'600',background:filterCat==='toutes'?'#2c2416':'#fff',color:filterCat==='toutes'?'#c8a96e':'#6b5a3e',border:'1px solid #d4c5a9'},
+          onClick:()=>{STATE.filterCat='toutes';render();}},'Toutes'),
+        ...CATEGORIES.map(cat=>{
+          const count=recs.filter(r=>r.cat===cat.key).length;if(!count)return null;
+          return btn({style:{padding:'4px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:'600',background:filterCat===cat.key?cat.c:'#fff',color:filterCat===cat.key?'#fff':'#6b5a3e',border:`1px solid ${filterCat===cat.key?cat.c:'#d4c5a9'}`},
+            onClick:()=>{STATE.filterCat=filterCat===cat.key?'toutes':cat.key;render();}},[cat.e+' '+cat.label+' ('+count+')']);
+        }).filter(Boolean)
+      ]),
+
+      // Tri
+      recs.length>1&&div({style:{display:'flex',borderRadius:'8px',overflow:'hidden',border:'1px solid #d4c5a9',marginBottom:'10px'}},[
+        btn({style:{flex:'1',padding:'6px',background:sortMode==='alpha'?'#2c2416':'#fff',color:sortMode==='alpha'?'#c8a96e':'#9c8469',fontSize:'12px'},onClick:()=>{document.getElementById('rec-sort').value='alpha';render();}},'A→Z'),
+        btn({style:{flex:'1',padding:'6px',background:sortMode==='freq'?'#2c2416':'#fff',color:sortMode==='freq'?'#c8a96e':'#9c8469',fontSize:'12px',borderLeft:'1px solid #d4c5a9'},onClick:()=>{document.getElementById('rec-sort').value='freq';render();}},'Fréquence'),
+        inp({id:'rec-sort',type:'hidden',value:sortMode})
+      ]),
+
+      // Liste
+      div({},[ ...sorted.map(r=>{
+        const isA=STATE.activeRecId===r.id;const cat=catOf(r);const algs=algRec(r,ings);
+        return div({
+          style:{background:isA?'#2c2416':'#fff',border:'1px solid #e8dcc8',borderRadius:'12px',marginBottom:'6px',overflow:'hidden',cursor:'pointer'},
+          onClick:()=>{r.freq=(r.freq||0)+1;STATE.activeRecId=r.id;render();}},[
+          div({style:{display:'flex',alignItems:'center',gap:'10px',padding:'10px'}},[
+            div({style:{width:'38px',height:'38px',borderRadius:'8px',flexShrink:'0',overflow:'hidden',background:'#f5f0e8',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px'}},
+              r.photo?[el('img',{src:r.photo,style:{width:'38px',height:'38px',objectFit:'cover'}})]:cat.e),
+            div({style:{flex:'1',minWidth:'0'}},[
+              // Nom avec renommage inline
+              STATE.renamingId===r.id?div({style:{display:'flex',gap:'4px'},onClick:e=>e.stopPropagation()},[
+                inp({id:'rename-inp',value:r.nom,style:{flex:'1',padding:'4px 8px'},
+                  onKeydown:e=>{if(e.key==='Enter'){r.nom=document.getElementById('rename-inp').value.trim()||r.nom;STATE.renamingId=null;render();}if(e.key==='Escape'){STATE.renamingId=null;render();}},
+                  onBlur:()=>{r.nom=document.getElementById('rename-inp')?.value.trim()||r.nom;STATE.renamingId=null;render();}}),
+                btn({style:{color:'#4a7c59',fontSize:'16px'},onClick:e=>{e.stopPropagation();r.nom=document.getElementById('rename-inp').value.trim()||r.nom;STATE.renamingId=null;render();}},'✓')
+              ]):div({style:{fontWeight:'600',fontSize:'13px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:isA?'#f5f0e8':'#2c2416'}},[r.nom]),
+              div({style:{display:'flex',gap:'4px',marginTop:'2px',flexWrap:'wrap',alignItems:'center'}},[
+                span({style:{fontSize:'10px',padding:'1px 6px',borderRadius:'10px',background:isA?'rgba(255,255,255,.15)':cat.c+'22',color:isA?'#f5f0e8':cat.c,fontWeight:'600'}},[cat.e+' '+cat.label]),
+                span({style:{fontSize:'11px',color:isA?'rgba(255,255,255,.6)':'#9c8469'}},[fe(cppRec(r,ings))+'/pièce']),
+                (r.freq||0)>0&&span({style:{fontSize:'10px',padding:'1px 6px',borderRadius:'10px',background:isA?'rgba(255,255,255,.15)':'#fdf3e0',color:'#c8a96e'}},['🔥'+(r.freq||0)]),
+                algs.length>0&&span({style:{fontSize:'12px',opacity:'.6'}},[algs.map(k=>ALLERGENES.find(x=>x.key===k)?.e||'').join('')]),
+                r.notes&&span({style:{fontSize:'12px',opacity:'.6'}},'💬')
+              ])
+            ]),
+            div({style:{display:'flex',flexDirection:'column',gap:'2px',flexShrink:'0'},onClick:e=>e.stopPropagation()},[
+              btn({style:{fontSize:'13px',opacity:'.5',padding:'3px'},title:'Renommer',onClick:e=>{e.stopPropagation();STATE.renamingId=r.id;render();setTimeout(()=>document.getElementById('rename-inp')?.focus(),30);}},'✏️'),
+              btn({style:{fontSize:'13px',opacity:'.5',padding:'3px'},title:'Dupliquer',onClick:e=>{e.stopPropagation();const copy={...JSON.parse(JSON.stringify(r)),id:Date.now(),nom:r.nom+' (copie)',freq:0};STATE.recs=[...STATE.recs,copy];STATE.activeRecId=copy.id;render();}},'📋'),
+              btn({style:{fontSize:'13px',opacity:'.5',padding:'3px'},title:'Supprimer',onClick:e=>{e.stopPropagation();if(confirm('Supprimer '+r.nom+' ?')){STATE.recs=STATE.recs.filter(x=>x.id!==r.id);if(STATE.activeRecId===r.id)STATE.activeRecId=null;render();}}},['🗑️'])
+            ])
+          ])
+        ]);
+      }),
+      sorted.length===0&&p({style:{textAlign:'center',color:'#9c8469',padding:'24px',fontSize:'13px'}},[search?`Aucun résultat pour "${search}"`:'Créez votre première recette'])
+      ])
+    ]),
+
+    // ─ Colonne détail
+    rec?buildRecDetail(rec,ings,fourns):div({style:{display:'flex',alignItems:'center',justifyContent:'center',height:'300px',border:'2px dashed #d4c5a9',borderRadius:'18px'}},[
+      div({style:{textAlign:'center',opacity:'.5'}},[div({style:{fontSize:'40px',marginBottom:'8px'}},'👨‍🍳'),p({},'Sélectionnez ou créez une recette')])
+    ])
+  ]);
+}
+
+function createRecette(){
+  const nom=document.getElementById('rec-nom')?.value.trim();if(!nom)return;
+  const cat=document.getElementById('rec-cat')?.value||'pains';
+  const r={id:Date.now(),nom,cat,lignes:[],pieces:1,poids:'',modeCalc:'pieces',freq:0,notes:'',photo:null};
+  STATE.recs=[...STATE.recs,r];STATE.activeRecId=r.id;
+  const i=document.getElementById('rec-nom');if(i)i.value='';
+  render();
+}
+
+function buildRecDetail(rec,ings,fourns){
+  const cat=catOf(rec);const algs=algRec(rec,ings);
+  const fidMap=STATE.fidMap||{};
+  const ptp=rec.lignes.reduce((s,l)=>s+(parseFloat(l.q)||0),0);
+  const ct=coutRec(rec,ings,Object.fromEntries(Object.entries(fidMap).map(([k,v])=>[k,!v||v==='best'?null:parseInt(v)])));
+  const pp=parseFloat(rec.poids)||0;
+  const cpp=rec.modeCalc==='poids'&&pp>0&&ptp>0?ct*(pp/ptp):(rec.pieces>0?ct/rec.pieces:0);
+  const npt=rec.modeCalc==='poids'&&pp>0&&ptp>0?Math.floor(ptp/pp):null;
+  const rend=rec.modeCalc==='pieces'&&ptp>0&&pp>0?((pp*rec.pieces)/ptp*100).toFixed(1):null;
+  const avail=ings.filter(i=>!rec.lignes.find(l=>l.id===i.id));
+
+  return div({},[
+    // Header recette
+    div({style:{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:'16px',gap:'12px'}},[
+      div({style:{display:'flex',alignItems:'center',gap:'12px',flex:'1',minWidth:'0'}},[
+        el('label',{style:{cursor:'pointer',flexShrink:'0'}},[
+          rec.photo?el('img',{src:rec.photo,style:{width:'56px',height:'56px',borderRadius:'12px',objectFit:'cover',border:'2px solid #c8a96e'}}):
+          div({style:{width:'56px',height:'56px',borderRadius:'12px',background:'#f5f0e8',border:'2px dashed #d4c5a9',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontSize:'10px',color:'#9c8469'}},['📷','Photo']),
+          el('input',{type:'file',accept:'image/*',style:{display:'none'},onChange(e){const f=e.target.files[0];if(!f)return;const r2=new FileReader();r2.onload=ev=>{rec.photo=ev.target.result;render();};r2.readAsDataURL(f);}})
+        ]),
+        div({style:{flex:'1',minWidth:'0'}},[
+          div({style:{display:'flex',alignItems:'center',gap:'6px',marginBottom:'4px'}},[
+            h(2,{style:{fontSize:'18px',fontWeight:'700',fontFamily:'Georgia',color:'#2c2416',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},[rec.nom]),
+            btn({style:{opacity:'.4',fontSize:'14px'},title:'Renommer',onClick:()=>{STATE.renamingId=rec.id;render();setTimeout(()=>document.getElementById('rename-inp')?.focus(),30);}},'✏️')
+          ]),
+          el('select',{class:'inline',value:rec.cat,onChange:e=>{rec.cat=e.target.value;render();}},[
+            ...CATEGORIES.map(c=>{const opt=el('option',{value:c.key},[c.e+' '+c.label]);if(c.key===rec.cat)opt.selected=true;return opt;})
+          ])
+        ])
+      ]),
+      btn({class:'btn-dark',style:{fontSize:'12px',padding:'7px 12px',display:'flex',alignItems:'center',gap:'5px',flexShrink:'0'},onClick:()=>printFiche(rec,ings)},['📄 Imprimer'])
+    ]),
+
+    // Allergènes
+    algs.length>0&&div({style:{background:'#fde8c0',border:'1px solid #c8a96e',borderRadius:'10px',padding:'10px 14px',display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap',marginBottom:'12px'}},[
+      '⚠️ Allergènes :',
+      ...algs.map(k=>{const a=ALLERGENES.find(x=>x.key===k);return a?span({style:{fontSize:'13px',color:'#6b5a3e'}},[a.e+' '+a.label]):null;}).filter(Boolean)
+    ]),
+
+    // Ajout ingrédients
+    avail.length>0&&div({class:'card',style:{marginBottom:'12px'}},[
+      div({class:'label',style:{marginBottom:'8px'}},'Ajouter un ingrédient'),
+      div({style:{display:'flex',flexWrap:'wrap',gap:'6px'}},[
+        ...avail.map(i=>btn({style:{border:'1px solid #c8a96e',color:'#6b5a3e',background:'#fdf8f0',borderRadius:'20px',padding:'5px 12px',fontSize:'12px'},
+          onClick:()=>{rec.lignes=[...rec.lignes,{id:i.id,q:0}];render();}},[
+          '+ '+i.nom+' '+(i.allergenes||[]).map(k=>ALLERGENES.find(x=>x.key===k)?.e||'').join('')
+        ]))
+      ])
+    ]),
+
+    // Tableau ingrédients
+    div({class:'card',style:{marginBottom:'12px'}},[
+      rec.lignes.length===0?p({style:{textAlign:'center',color:'#9c8469',padding:'20px',fontSize:'13px'}},'Ajoutez des ingrédients ci-dessus'):
+      div({class:'overflow-x'},[
+        fourns.length>0&&div({style:{display:'flex',alignItems:'center',gap:'6px',marginBottom:'10px',paddingBottom:'10px',borderBottom:'1px solid #e8dcc8',fontSize:'12px',color:'#9c8469'}},['🚛 Choisissez le fournisseur par ingrédient']),
+        el('table',{},[
+          el('thead',{},[el('tr',{},[
+            el('th',{},'Ingrédient'),el('th',{},'Quantité'),
+            fourns.length>0&&el('th',{},'Fournisseur'),
+            el('th',{},'Coût'),el('th',{},'')
+          ].filter(Boolean))]),
+          el('tbody',{},[...rec.lignes.map((l,i)=>{
+            const ing=ings.find(x=>x.id===l.id);if(!ing)return null;
+            const fv=fidMap[l.id]||'best';const fidEff=!fv||fv==='best'?null:parseInt(fv);
+            const p=bestPrice(ing,fidEff);const c=(l.q/(ing.unite==='piece'?1:1000))*p;
+            const u=ing.unite==='kg'?'g':ing.unite==='L'?'mL':'pcs';
+            const mcFid=cheapestFid(ing);const mcF=fourns.find(f=>f.id===mcFid);
+            const fd=fourns.filter(f=>ing.prix?.[f.id]?.length);
+            return el('tr',{},[
+              el('td',{},[
+                div({style:{fontWeight:'600',fontSize:'13px'}},[ing.nom]),
+                div({style:{fontSize:'11px'}},[(ing.allergenes||[]).map(k=>ALLERGENES.find(x=>x.key===k)?.e||'').join('')]),
+                mcF&&fv!=='best'&&parseInt(fv)!==mcFid&&div({style:{fontSize:'10px',color:'#c8a96e'}},['⭐ Moins cher: '+mcF.nom+' ('+fe(bestPrice(ing,mcFid))+')'])
+              ].filter(Boolean)),
+              el('td',{},[div({style:{display:'flex',alignItems:'center',gap:'6px'}},[
+                el('input',{type:'number',min:'0',step:'1',value:l.q,class:'input-num',
+                  onInput:e=>{l.q=parseFloat(e.target.value)||0;render();}}),
+                span({style:{fontSize:'11px',opacity:'.6'}},[u])
+              ])]),
+              fourns.length>0&&el('td',{},[fd.length>0?el('select',{style:{fontSize:'12px',padding:'4px 6px',borderRadius:'6px'},
+                onChange:e=>{if(!STATE.fidMap)STATE.fidMap={};STATE.fidMap[l.id]=e.target.value;render();}},[
+                el('option',{value:'best',selected:fv==='best'},'⭐ Moins cher'),
+                ...fd.map(f=>{const opt=el('option',{value:f.id},[f.nom+' — '+fe(bestPrice(ing,f.id))]);if(parseInt(fv)===f.id)opt.selected=true;return opt;})
+              ]):'—']),
+              el('td',{},[div({style:{fontFamily:'monospace',fontWeight:'700',color:'#c8a96e',fontSize:'13px'}},[fe(c)]),p>0&&div({style:{fontSize:'10px',opacity:'.5'}},[fe(p)+'/'+ing.unite])].filter(Boolean)),
+              el('td',{},[btn({style:{color:'#c0392b',background:'#c0392b22',borderRadius:'6px',padding:'4px 8px',fontSize:'12px'},
+                onClick:()=>{rec.lignes=rec.lignes.filter(x=>x.id!==l.id);if(STATE.fidMap)delete STATE.fidMap[l.id];render();}},'🗑️')])
+            ].filter(Boolean));
+          }).filter(Boolean)])
+        ])
+      ])
+    ]),
+
+    // Portionnement
+    div({class:'card',style:{marginBottom:'12px'}},[
+      div({style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'14px'}},[
+        div({class:'label'},'⚖️ Portionnement'),
+        div({style:{display:'flex',borderRadius:'8px',overflow:'hidden',border:'1px solid #d4c5a9'}},[
+          btn({style:{padding:'6px 12px',background:rec.modeCalc==='pieces'?'#2c2416':'#fdf8f0',color:rec.modeCalc==='pieces'?'#c8a96e':'#9c8469',fontSize:'12px'},onClick:()=>{rec.modeCalc='pieces';render();}},'# Pièces'),
+          btn({style:{padding:'6px 12px',background:rec.modeCalc==='poids'?'#2c2416':'#fdf8f0',color:rec.modeCalc==='poids'?'#c8a96e':'#9c8469',fontSize:'12px',borderLeft:'1px solid #d4c5a9'},onClick:()=>{rec.modeCalc='poids';render();}},'⚖️ Poids')
+        ])
+      ]),
+      div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}},[
+        rec.modeCalc==='pieces'&&div({},[
+          p({style:{fontSize:'12px',color:'#6b5a3e',marginBottom:'4px'}},'Nombre de pièces'),
+          el('input',{type:'number',min:'1',step:'1',value:rec.pieces,style:{textAlign:'center',fontSize:'20px',fontWeight:'700',border:'2px solid #c8a96e'},
+            onInput:e=>{rec.pieces=Math.max(1,parseInt(e.target.value)||1);render();}})
+        ]),
+        div({},[
+          p({style:{fontSize:'12px',color:'#6b5a3e',marginBottom:'4px'}},[`Poids pièce cuite (g)${rec.modeCalc==='pieces'?' — optionnel':''}`]),
+          div({style:{position:'relative'}},[
+            el('input',{type:'number',min:'0',step:'1',placeholder:'ex: 250',value:rec.poids,style:{textAlign:'center',fontSize:'20px',fontWeight:'700',border:rec.modeCalc==='poids'?'2px solid #c8a96e':'1px solid #d4c5a9',paddingRight:'28px'},
+              onInput:e=>{rec.poids=e.target.value;render();}}),
+            span({style:{position:'absolute',right:'10px',top:'50%',transform:'translateY(-50%)',color:'#c8a96e',fontWeight:'700',fontSize:'12px'}},'g')
+          ]),
+          rend&&p({style:{fontSize:'11px',textAlign:'center',color:'#9c8469',marginTop:'4px'}},['rendement: ',span({style:{color:'#c8a96e',fontWeight:'700'}},[rend+'%'])])
+        ]),
+        rec.modeCalc==='poids'&&div({style:{background:'#fdf3e0',borderRadius:'10px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'10px'}},[
+          p({style:{fontSize:'11px',color:'#9c8469',marginBottom:'4px'}},'Pièces théoriques'),
+          p({style:{fontSize:'28px',fontWeight:'700',fontFamily:'Georgia',color:'#2c2416'}},[npt!==null&&pp>0?npt:'—'])
+        ])
+      ].filter(Boolean))
+    ]),
+
+    // Notes
+    div({class:'card',style:{marginBottom:'12px'}},[
+      div({class:'label',style:{marginBottom:'8px'}},'💬 Notes & commentaires'),
+      el('textarea',{placeholder:'Notes, ajustements, retours clients, conseils de fabrication…',rows:'3',style:{resize:'none',lineHeight:'1.6'},
+        onInput:e=>{rec.notes=e.target.value;}},rec.notes?[rec.notes]:[])
+    ]),
+
+    // Stats
+    div({style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'10px'}},[
+      statCard('Coût total',fe(ct),'💰'),
+      statCard('Coût/pièce',fe(cpp),'📦',true),
+      statCard(rec.modeCalc==='poids'?'Coût/g':'Pièces',rec.modeCalc==='poids'&&ptp>0?Number(ct/ptp).toFixed(5)+' €':rec.pieces,'⚙️')
+    ])
+  ]);
+}
+
+// ── PRIX DE VENTE ─────────────────────────────────────────────────
+function buildPrix(){
+  const {ings,fourns,recs}=STATE;
+  if(!STATE.prixState)STATE.prixState={selId:'',coutM:'',poidsM:'',modeM:'pieces',tva:5.5,mode:'coef',coef:'3',prixS:'',margeS:''};
+  const ps=STATE.prixState;
+
+  const rec=ps.selId?recs.find(r=>r.id===parseInt(ps.selId)):null;
+  const cout=rec?cppRec(rec,ings):(ps.modeM==='pieces'?parseFloat(ps.coutM)||0:(parseFloat(ps.coutM)||0)*(parseFloat(ps.poidsM)||0));
+
+  let coef=0,prixHT=0,prixTTC=0,marge=0,margePct=0;
+  if(cout>0){
+    const tm=1+ps.tva/100;
+    if(ps.mode==='coef'){const c=parseFloat(ps.coef)||1;const ht=cout*c;const ttc=ht*tm;coef=c;prixHT=ht;prixTTC=ttc;marge=ttc-cout;margePct=((ttc-cout)/ttc)*100;}
+    else if(ps.mode==='prixTTC'){const ttc=parseFloat(ps.prixS)||0;const ht=ttc/tm;coef=cout>0?ht/cout:0;prixHT=ht;prixTTC=ttc;marge=ttc-cout;margePct=ttc>0?((ttc-cout)/ttc)*100:0;}
+    else{const tm2=(parseFloat(ps.margeS)||0)/100;if(tm2<1){const ttc=tm2>0?cout/(1-tm2):cout;const ht=ttc/tm;coef=cout>0?ht/cout:0;prixHT=ht;prixTTC=ttc;marge=ttc-cout;margePct=tm2*100;}}
+  }
+
+  const algs=rec?algRec(rec,ings):[];
+  const compF=rec?fourns.map(f=>{const fm={};rec.lignes.forEach(l=>{fm[l.id]=f.id;});const ct=coutRec(rec,ings,fm);return{f,cp:cppRec({...rec},ings,fm),ct};}).filter(x=>x.ct>0).sort((a,b)=>a.cp-b.cp):[];
+
+  const upd=patch=>{Object.assign(ps,patch);render();};
+
+  return div({style:{maxWidth:'600px',margin:'0 auto'}},[
+    sectionTitle('💰','Calculateur de prix','Choisissez votre méthode de calcul'),
+
+    // Source coût
+    div({class:'card'},[
+      div({class:'label',style:{marginBottom:'10px'}},'Coût de revient'),
+      recs.length>0&&div({style:{marginBottom:'12px'}},[
+        p({style:{fontSize:'13px',color:'#6b5a3e',marginBottom:'4px'}},'Depuis une fiche technique'),
+        el('select',{style:{},onChange:e=>upd({selId:e.target.value})},[
+          el('option',{value:''},'— Saisie manuelle —'),
+          ...recs.map(r=>{const cat=catOf(r);const opt=el('option',{value:r.id},[cat.e+' '+r.nom+' — '+fe(cppRec(r,ings),3)+'/pièce']);if(r.id===parseInt(ps.selId))opt.selected=true;return opt;})
+        ])
+      ]),
+      rec?div({style:{background:'#fdf3e0',borderRadius:'10px',padding:'10px',display:'flex',flexWrap:'wrap',gap:'6px'}},[
+        span({class:'pill'},'Coût/pièce: '+fe(cout,3))
+      ]):div({},[
+        div({style:{display:'flex',borderRadius:'8px',overflow:'hidden',border:'1px solid #d4c5a9',marginBottom:'10px'}},[
+          btn({style:{flex:'1',padding:'7px',background:ps.modeM==='pieces'?'#2c2416':'#fdf8f0',color:ps.modeM==='pieces'?'#c8a96e':'#9c8469',fontSize:'12px'},onClick:()=>upd({modeM:'pieces'})},'Coût/pièce'),
+          btn({style:{flex:'1',padding:'7px',background:ps.modeM==='poids'?'#2c2416':'#fdf8f0',color:ps.modeM==='poids'?'#c8a96e':'#9c8469',fontSize:'12px',borderLeft:'1px solid #d4c5a9'},onClick:()=>upd({modeM:'poids'})},'Coût au gramme')
+        ]),
+        ps.modeM==='pieces'&&div({},[p({style:{fontSize:'13px',color:'#6b5a3e',marginBottom:'4px'}},'Coût/pièce (€)'),inp({type:'number',step:'0.001',placeholder:'ex: 0.245',value:ps.coutM,onInput:e=>upd({coutM:e.target.value})})]),
+        ps.modeM==='poids'&&div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}},[
+          div({},[p({style:{fontSize:'13px',color:'#6b5a3e',marginBottom:'4px'}},'Coût au gramme (€/g)'),inp({type:'number',step:'0.00001',placeholder:'ex: 0.00245',value:ps.coutM,onInput:e=>upd({coutM:e.target.value})})]),
+          div({},[p({style:{fontSize:'13px',color:'#6b5a3e',marginBottom:'4px'}},'Poids/pièce (g)'),inp({type:'number',step:'1',placeholder:'ex: 250',value:ps.poidsM,onInput:e=>upd({poidsM:e.target.value})})])
+        ])
+      ])
+    ]),
+
+    // Allergènes
+    algs.length>0&&div({style:{background:'#fde8c0',border:'1px solid #c8a96e',borderRadius:'10px',padding:'10px 14px',display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center',marginTop:'10px'}},[
+      '⚠️',span({style:{fontWeight:'700',fontSize:'12px',color:'#b8892e'}},'Allergènes :'),
+      ...algs.map(k=>{const a=ALLERGENES.find(x=>x.key===k);return a?span({style:{fontSize:'12px',color:'#6b5a3e'}},[a.e+' '+a.label]):null;}).filter(Boolean)
+    ]),
+
+    // Comparatif fournisseurs
+    compF.length>1&&div({class:'card',style:{marginTop:'10px'}},[
+      div({class:'label',style:{marginBottom:'10px'}},'🚛 Comparatif fournisseurs'),
+      div({},[...compF.map((x,i)=>div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 10px',borderRadius:'10px',marginBottom:'6px',background:i===0?'#e8f5e2':'#faf6ef',border:i===0?'1px solid #a8d5a2':'1px solid #e8dcc8'}},[
+        div({style:{display:'flex',alignItems:'center',gap:'6px'}},[
+          i===0&&'⭐',
+          span({style:{fontWeight:'600',fontSize:'13px',color:i===0?'#3a7d44':'#2c2416'}},[x.f.nom]),
+          i===0&&span({class:'tag',style:{background:'#3a7d44',color:'#fff',fontSize:'11px'}},'Moins cher')
+        ].filter(Boolean)),
+        div({style:{textAlign:'right'}},[
+          div({style:{fontFamily:'monospace',fontWeight:'700',fontSize:'13px',color:i===0?'#3a7d44':'#2c2416'}},[fe(x.cp,3)+'/pièce']),
+          div({style:{fontSize:'11px',opacity:'.6'}},'total: '+fe(x.ct))
+        ])
+      ]))])
+    ]),
+
+    // TVA
+    div({class:'card',style:{marginTop:'10px'}},[
+      div({class:'label',style:{marginBottom:'10px'}},'Taux de TVA'),
+      div({style:{display:'flex',gap:'8px'}},[
+        ...[5.5,20].map(t=>btn({style:{flex:'1',padding:'9px',borderRadius:'10px',fontWeight:'700',fontSize:'14px',background:ps.tva===t?'#2c2416':'#fdf8f0',color:ps.tva===t?'#f5f0e8':'#6b5a3e',border:`1px solid ${ps.tva===t?'#2c2416':'#d4c5a9'}`},onClick:()=>upd({tva:t})},[t+'%']))
+      ])
+    ]),
+
+    // Mode calcul
+    div({class:'card',style:{marginTop:'10px'}},[
+      div({class:'label',style:{marginBottom:'10px'}},'Je calcule à partir de…'),
+      div({style:{display:'flex',borderRadius:'12px',overflow:'hidden',border:'1px solid #d4c5a9',marginBottom:'14px'}},[
+        ...[[{key:'coef',label:'Coefficient',icon:'#'},{key:'prixTTC',label:'Prix de vente',icon:'€'},{key:'marge',label:'Taux de marge',icon:'%'}]].flat().map((m,idx,arr)=>btn({
+          style:{flex:'1',padding:'10px 6px',background:ps.mode===m.key?'#2c2416':'#fdf8f0',color:ps.mode===m.key?'#c8a96e':'#9c8469',fontSize:'12px',fontWeight:'600',borderRight:idx<arr.length-1?'1px solid #d4c5a9':'none',display:'flex',flexDirection:'column',alignItems:'center',gap:'3px'},
+          onClick:()=>upd({mode:m.key})},[span({style:{fontSize:'16px'}},[m.icon]),m.label])
+        )
+      ]),
+      ps.mode==='coef'&&div({},[
+        p({style:{fontSize:'13px',color:'#6b5a3e',marginBottom:'8px'}},['Coefficient : ',span({style:{color:'#c8a96e',fontWeight:'700'}},['×'+(parseFloat(ps.coef)||1)])]),
+        div({style:{display:'flex',gap:'10px',alignItems:'center'}},[
+          el('input',{type:'range',min:'1',max:'10',step:'0.1',value:ps.coef,style:{flex:'1',accentColor:'#c8a96e'},onInput:e=>upd({coef:e.target.value})}),
+          inp({type:'number',min:'1',max:'20',step:'0.1',value:ps.coef,style:{width:'70px',textAlign:'center',fontWeight:'700'},onInput:e=>upd({coef:e.target.value})})
+        ])
+      ]),
+      ps.mode==='prixTTC'&&div({},[
+        p({style:{fontSize:'13px',color:'#6b5a3e',marginBottom:'8px'}},'Prix de vente TTC souhaité (€)'),
+        div({style:{position:'relative'}},[
+          inp({type:'number',min:'0',step:'0.01',placeholder:'ex: 1.20',value:ps.prixS,style:{textAlign:'center',fontSize:'24px',fontWeight:'700',border:'2px solid #c8a96e',paddingRight:'30px'},onInput:e=>upd({prixS:e.target.value})}),
+          span({style:{position:'absolute',right:'12px',top:'50%',transform:'translateY(-50%)',color:'#c8a96e',fontWeight:'700',fontSize:'18px'}},'€')
+        ]),
+        cout>0&&parseFloat(ps.prixS)>0&&p({style:{textAlign:'center',fontSize:'12px',color:'#9c8469',marginTop:'6px'}},['Coefficient calculé : ',span({style:{color:'#c8a96e',fontWeight:'700'}},['×'+Number(coef).toFixed(2)])])
+      ]),
+      ps.mode==='marge'&&div({},[
+        p({style:{fontSize:'13px',color:'#6b5a3e',marginBottom:'8px'}},'Taux de marge brute (%)'),
+        div({style:{display:'flex',gap:'10px',alignItems:'center'}},[
+          el('input',{type:'range',min:'0',max:'90',step:'1',value:ps.margeS||0,style:{flex:'1',accentColor:'#c8a96e'},onInput:e=>upd({margeS:e.target.value})}),
+          inp({type:'number',min:'0',max:'99',step:'0.5',placeholder:'ex: 65',value:ps.margeS,style:{width:'70px',textAlign:'center',fontWeight:'700'},onInput:e=>upd({margeS:e.target.value})})
+        ]),
+        cout>0&&parseFloat(ps.margeS)>0&&p({style:{textAlign:'center',fontSize:'12px',color:'#9c8469',marginTop:'6px'}},['Coefficient calculé : ',span({style:{color:'#c8a96e',fontWeight:'700'}},['×'+Number(coef).toFixed(2)])])
+      ])
+    ]),
+
+    // Résultats
+    cout>0?div({},[
+      div({style:{background:'#2c2416',borderRadius:'18px',padding:'22px',textAlign:'center',marginTop:'10px'}},[
+        p({style:{fontSize:'11px',textTransform:'uppercase',letterSpacing:'.08em',color:'rgba(255,255,255,.5)',marginBottom:'6px'}},'Prix de vente conseillé TTC'),
+        p({style:{fontSize:'44px',fontWeight:'700',fontFamily:'Georgia',color:'#c8a96e'}},[fe(prixTTC)]),
+        p({style:{fontSize:'11px',color:'rgba(255,255,255,.4)',marginTop:'4px'}},['dont '+fe(prixTTC-prixHT)+' de TVA ('+ps.tva+'%)'])
+      ]),
+      div({style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginTop:'10px'}},[
+        resCard('Marge brute/pièce',fe(marge),'€',ps.mode!=='prixTTC',false),
+        resCard('Taux de marge',Number(margePct).toFixed(1)+' %','%',ps.mode!=='marge',true),
+        resCard('Coefficient','× '+Number(coef).toFixed(2),'×',ps.mode!=='coef',false),
+        resCard('Prix HT',fe(prixHT),'HT',false,false)
+      ]),
+      div({class:'card',style:{marginTop:'10px'}},[
+        div({class:'label',style:{marginBottom:'10px'}},'Récapitulatif'),
+        ...[
+          ['Coût matière/pièce',fe(cout,4),false,false],
+          ['× Coefficient (×'+Number(coef).toFixed(2)+')',fe(prixHT),false,false],
+          ['+ TVA '+ps.tva+'%',fe(prixTTC-prixHT),false,false],
+          ['Prix TTC final',fe(prixTTC),true,true],
+          ['Marge brute/pièce',fe(marge),false,false],
+          ['Taux de marge',Number(margePct).toFixed(1)+' %',false,true]
+        ].map(([l,v,bold,accent])=>div({style:{display:'flex',justifyContent:'space-between',padding:'4px 0',borderTop:'1px solid #e8dcc8'}},[
+          span({style:{color:'#9c8469',fontSize:'13px'}},[l]),
+          span({style:{fontFamily:'monospace',fontWeight:bold?'700':'400',color:accent?'#c8a96e':'#2c2416',fontSize:'13px'}},[v])
+        ]))
+      ])
+    ]):div({style:{display:'flex',alignItems:'center',justifyContent:'center',height:'120px',border:'2px dashed #d4c5a9',borderRadius:'18px',marginTop:'10px'}},[
+      p({style:{color:'#9c8469',fontSize:'13px'}},'Renseignez un coût de revient pour démarrer')
+    ])
+  ]);
+}
+
+function resCard(label,value,icon,active,accent){
+  return div({style:{background:accent?'#fdf3e0':'#fff',border:`2px solid ${active?(accent?'#c8a96e':'#2c2416'):'#e8dcc8'}`,borderRadius:'12px',padding:'14px',position:'relative',overflow:'hidden'}},[
+    active&&div({style:{position:'absolute',top:'0',right:'0',background:accent?'#c8a96e':'#2c2416',color:accent?'#2c2416':'#c8a96e',fontSize:'10px',fontWeight:'700',padding:'2px 8px',borderBottomLeftRadius:'8px'}},'calculé'),
+    p({style:{fontSize:'11px',color:'#9c8469',fontWeight:'700',textTransform:'uppercase',marginBottom:'4px'}},[label]),
+    p({style:{fontSize:'22px',fontWeight:'700',fontFamily:'Georgia',color:accent?'#c8a96e':'#2c2416'}},[value])
+  ]);
+}
+
+// ── PRINT ────────────────────────────────────────────────────────
+function printFiche(rec,ings){
+  const ct=coutRec(rec,ings,{});const cpp=cppRec(rec,ings);
+  const pp=parseFloat(rec.poids)||0;const ptp=rec.lignes.reduce((s,l)=>s+(parseFloat(l.q)||0),0);
+  const npt=rec.modeCalc==='poids'&&pp>0&&ptp>0?Math.floor(ptp/pp):null;
+  const algs=algRec(rec,ings);const cat=catOf(rec);
+  const rows=rec.lignes.map(l=>{
+    const ing=ings.find(i=>i.id===l.id);if(!ing)return'';
+    const p=bestPrice(ing);const div2=ing.unite==='piece'?1:1000;const c=(l.q/div2)*p;
+    const u=ing.unite==='kg'?'g':ing.unite==='L'?'mL':'pcs';
+    return`<tr><td>${ing.nom}</td><td style="text-align:right">${l.q} ${u}</td><td style="text-align:right;font-family:monospace">${fe(p)}/${ing.unite}</td><td style="text-align:right;font-family:monospace;font-weight:bold;color:#c8a96e">${fe(c)}</td></tr>`;
+  }).join('');
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${rec.nom}</title><style>body{font-family:Georgia,serif;color:#2c2416;padding:24px;max-width:700px;margin:0 auto;font-size:13px}h2{border-left:4px solid #c8a96e;padding-left:10px}table{width:100%;border-collapse:collapse;margin:12px 0}th{background:#2c2416;color:#c8a96e;padding:7px 10px;text-align:left;font-size:11px;text-transform:uppercase}td{padding:6px 10px;border-bottom:1px solid #e8dcc8}.info{background:#fdf3e0;padding:10px;border-radius:6px;margin:10px 0;font-size:12px;display:flex;gap:16px;flex-wrap:wrap}.alg{background:#fde8c0;padding:8px;border-radius:6px;margin:8px 0;font-size:12px}.notes{background:#f5f0e8;padding:10px;border-radius:6px;margin:10px 0;font-size:12px}@media print{body{padding:12px}}</style></head><body>
+    ${rec.photo?`<img src="${rec.photo}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:12px"/>`:``}
+    <h2>${cat.e} ${rec.nom}</h2>
+    <div class="info">
+      <span>Portionnement : <strong>${rec.modeCalc==='poids'?`${pp}g/pièce · ${npt||'?'} pcs`:`${rec.pieces} pièces`}</strong></span>
+      <span>Coût total : <strong>${fe(ct)}</strong></span>
+      <span>Coût/pièce : <strong style="color:#c8a96e;font-size:16px">${fe(cpp)}</strong></span>
+    </div>
+    ${algs.length?`<div class="alg">⚠️ Allergènes : ${algs.map(k=>{const a=ALLERGENES.find(x=>x.key===k);return a?a.e+' '+a.label:'';}).join(' · ')}</div>`:''}
+    <table><thead><tr><th>Ingrédient</th><th style="text-align:right">Quantité</th><th style="text-align:right">Prix unit.</th><th style="text-align:right">Coût</th></tr></thead><tbody>${rows}</tbody></table>
+    ${rec.notes?`<div class="notes">📝 Notes :<br/>${rec.notes.replace(/\n/g,'<br/>')}</div>`:''}
+    <p style="font-size:10px;opacity:.4;margin-top:20px;text-align:center">FichesPro · ${new Date().toLocaleDateString('fr-FR')}</p>
+    </body></html>`;
+  const w=window.open('','_blank');w.document.write(html);w.document.close();w.print();
+}
+
+// ── COMPOSANTS PARTAGÉS ───────────────────────────────────────────
+function sectionTitle(icon,title,sub){
+  return div({style:{display:'flex',alignItems:'center',gap:'12px',marginBottom:'18px'}},[
+    div({style:{width:'40px',height:'40px',borderRadius:'12px',background:'rgba(200,169,110,.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px',flexShrink:'0'}},[icon]),
+    div({},[h(2,{style:{fontSize:'19px',fontWeight:'700',fontFamily:'Georgia',color:'#2c2416'}},[title]),p({style:{fontSize:'11px',color:'#9c8469',marginTop:'-1px'}},[sub])])
+  ]);
+}
+function statCard(label,value,icon,accent=false){
+  return div({style:{background:accent?'#fdf3e0':'#fff',border:`1px solid ${accent?'#c8a96e':'#e8dcc8'}`,borderRadius:'14px',padding:'14px'}},[
+    div({style:{display:'flex',alignItems:'center',gap:'4px',marginBottom:'4px'}},[
+      span({style:{fontSize:'14px'}},[icon]),
+      span({style:{fontSize:'11px',color:'#9c8469',fontWeight:'700',textTransform:'uppercase',letterSpacing:'.05em'}},[label])
+    ]),
+    p({style:{fontSize:'22px',fontWeight:'700',fontFamily:'Georgia',color:accent?'#c8a96e':'#2c2416'}},[value])
+  ]);
+}
+function buildPDFPicker(){
+  const {recs,ings}=STATE;
+  if(!STATE.pdfSelected)STATE.pdfSelected=recs.map(r=>r.id);
+  const sel=STATE.pdfSelected;
+  const search=(STATE.pdfSearch||'').toLowerCase();
+  const filtered=recs.filter(r=>r.nom.toLowerCase().includes(search));
+  const allOn=filtered.every(r=>sel.includes(r.id));
+  return div({class:'modal-bg',onClick:()=>{STATE.modal=null;render();}},[
+    div({class:'modal',onClick:e=>e.stopPropagation()},[
+      div({style:{background:'#2c2416',padding:'16px 20px',display:'flex',justifyContent:'space-between',alignItems:'center'}},[
+        span({style:{color:'#f5f0e8',fontWeight:'700',fontSize:'15px'}},'🖨️ Choisir les fiches à imprimer'),
+        btn({style:{color:'rgba(255,255,255,.6)',fontSize:'18px'},onClick:()=>{STATE.modal=null;render();}},'✕')
+      ]),
+      div({style:{padding:'12px 16px',borderBottom:'1px solid #e8dcc8'}},[
+        inp({placeholder:'🔍 Rechercher…',value:STATE.pdfSearch||'',onInput:e=>{STATE.pdfSearch=e.target.value;render();}})
+      ]),
+      div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 16px',background:'#faf6ef',borderBottom:'1px solid #e8dcc8'}},[
+        span({style:{fontSize:'12px',color:'#9c8469'}},[(sel.length)+'/'+recs.length+' sélectionnée'+(sel.length>1?'s':'')]),
+        btn({style:{fontSize:'12px',fontWeight:'600',background:allOn?'#2c2416':'#fdf3e0',color:'#c8a96e',borderRadius:'8px',padding:'4px 12px'},
+          onClick:()=>{STATE.pdfSelected=allOn?[]:filtered.map(r=>r.id);render();}},[allOn?'Tout désélectionner':'Tout sélectionner'])
+      ]),
+      div({style:{maxHeight:'300px',overflowY:'auto'}},[
+        ...filtered.map(r=>{
+          const isOn=sel.includes(r.id);const cat=catOf(r);const algs=algRec(r,ings);
+          return div({style:{display:'flex',alignItems:'center',gap:'10px',padding:'10px 16px',borderBottom:'1px solid #f0ebe1',background:isOn?'#fdf8f0':'#fff',cursor:'pointer'},
+            onClick:()=>{STATE.pdfSelected=isOn?sel.filter(x=>x!==r.id):[...sel,r.id];render();}},[
+            div({style:{width:'20px',height:'20px',borderRadius:'6px',flexShrink:'0',background:isOn?'#c8a96e':'#fff',border:`2px solid ${isOn?'#c8a96e':'#d4c5a9'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'12px'}},isOn?'✓':''),
+            r.photo?el('img',{src:r.photo,style:{width:'36px',height:'36px',borderRadius:'8px',objectFit:'cover',flexShrink:'0'}}):div({style:{width:'36px',height:'36px',borderRadius:'8px',background:'#f5f0e8',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px',flexShrink:'0'}},[cat.e]),
+            div({style:{flex:'1',minWidth:'0'}},[
+              div({style:{fontWeight:'600',fontSize:'13px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},[r.nom]),
+              div({style:{fontSize:'11px',color:'#9c8469',display:'flex',gap:'6px',alignItems:'center'}},[fe(cppRec(r,ings))+'/pièce',algs.length>0&&algs.map(k=>ALLERGENES.find(x=>x.key===k)?.e||'').join(''),r.notes&&'💬'].filter(Boolean))
+            ])
+          ]);
+        })
+      ]),
+      div({style:{display:'flex',justifyContent:'space-between',padding:'12px 16px',borderTop:'1px solid #e8dcc8',background:'#faf6ef'}},[
+        btn({style:{background:'#f5f0e8',color:'#6b5a3e',borderRadius:'10px',padding:'8px 16px',fontWeight:'600'},onClick:()=>{STATE.modal=null;render();}},'Annuler'),
+        btn({class:'btn-dark',style:{display:'flex',alignItems:'center',gap:'6px',opacity:sel.length?'1':'.5'},
+          onClick:()=>{
+            if(!sel.length)return;
+            const toExp=recs.filter(r=>sel.includes(r.id));
+            const fiches=toExp.map(r=>buildFicheHTMLStr(r,ings)).join('<div style="page-break-after:always"></div>');
+            const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>FichesPro</title><style>body{font-family:Georgia,serif;color:#2c2416;padding:24px;max-width:700px;margin:0 auto;font-size:13px}h2{border-left:4px solid #c8a96e;padding-left:10px}table{width:100%;border-collapse:collapse;margin:12px 0}th{background:#2c2416;color:#c8a96e;padding:7px 10px;text-align:left;font-size:11px;text-transform:uppercase}td{padding:6px 10px;border-bottom:1px solid #e8dcc8}.info{background:#fdf3e0;padding:10px;border-radius:6px;margin:10px 0;font-size:12px;display:flex;gap:16px;flex-wrap:wrap}.alg{background:#fde8c0;padding:8px;border-radius:6px;margin:8px 0;font-size:12px}.notes{background:#f5f0e8;padding:10px;border-radius:6px;margin:10px 0;font-size:12px}@media print{body{padding:12px}}</style></head><body>${fiches}</body></html>`;
+            const w=window.open('','_blank');w.document.write(html);w.document.close();w.print();
+            STATE.modal=null;render();
+          }},['🖨️ Imprimer ('+(sel.length)+')'])
+      ])
+    ])
+  ]);
+}
+function buildFicheHTMLStr(rec,ings){
+  const ct=coutRec(rec,ings,{});const cpp=cppRec(rec,ings);
+  const pp=parseFloat(rec.poids)||0;const ptp=rec.lignes.reduce((s,l)=>s+(parseFloat(l.q)||0),0);
+  const npt=rec.modeCalc==='poids'&&pp>0&&ptp>0?Math.floor(ptp/pp):null;
+  const algs=algRec(rec,ings);const cat=catOf(rec);
+  const rows=rec.lignes.map(l=>{
+    const ing=ings.find(i=>i.id===l.id);if(!ing)return'';
+    const p=bestPrice(ing);const d=ing.unite==='piece'?1:1000;const c=(l.q/d)*p;
+    const u=ing.unite==='kg'?'g':ing.unite==='L'?'mL':'pcs';
+    return`<tr><td>${ing.nom}</td><td style="text-align:right">${l.q} ${u}</td><td style="text-align:right;font-family:monospace">${fe(p)}/${ing.unite}</td><td style="text-align:right;font-family:monospace;font-weight:bold;color:#c8a96e">${fe(c)}</td></tr>`;
+  }).join('');
+  return`<div>${rec.photo?`<img src="${rec.photo}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:12px"/>`:``}<h2>${cat.e} ${rec.nom}</h2><div class="info"><span>Portionnement : <strong>${rec.modeCalc==='poids'?`${pp}g/pièce · ${npt||'?'} pcs`:`${rec.pieces} pièces`}</strong></span><span>Coût total : <strong>${fe(ct)}</strong></span><span>Coût/pièce : <strong style="color:#c8a96e;font-size:16px">${fe(cpp)}</strong></span></div>${algs.length?`<div class="alg">⚠️ ${algs.map(k=>{const a=ALLERGENES.find(x=>x.key===k);return a?a.e+' '+a.label:'';}).join(' · ')}</div>`:''}<table><thead><tr><th>Ingrédient</th><th style="text-align:right">Quantité</th><th style="text-align:right">Prix unit.</th><th style="text-align:right">Coût</th></tr></thead><tbody>${rows}</tbody></table>${rec.notes?`<div class="notes">📝 ${rec.notes.replace(/\n/g,'<br/>')}</div>`:''}</div>`;
+}
+
+// ── DÉMARRAGE ────────────────────────────────────────────────────
+render();
+
+// Responsive: sur mobile, passer en layout vertical pour recettes
+window.addEventListener('resize',()=>{
+  const grid=document.querySelector('.grid-cols-2-rec');
+  if(grid)grid.style.gridTemplateColumns=window.innerWidth<768?'1fr':'300px 1fr';
+});
+</script>
+</body>
+</html>
